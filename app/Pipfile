@@ -9,7 +9,9 @@ name = "pypi"
 
 django = "==2.2"
 gunicorn= "==19.9.0"
-
+celery= "==4.2.1"
+amqp= "==2.3.2"
+django-celery= "==3.2.2"
 
 [dev-packages]
 

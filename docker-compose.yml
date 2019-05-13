@@ -2,32 +2,85 @@ version: '3.7'
 
 services:
   web:
-    build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: gunicorn hello_django.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      - ./app/:/usr/src/app/
-    ports:
-      - 8000:8000
-    environment:
-      - DEBUG=1
-      - SECRET_KEY=foo
-      - SQL_ENGINE=django.db.backends.postgresql
-      - SQL_DATABASE=hello_django_dev
-      - SQL_USER=hello_django
-      - SQL_PASSWORD=hello_django
-      - SQL_HOST=db
-      - SQL_PORT=5432
-      - DATABASE=postgres
+      - static_volume:/usr/src/app/staticfiles
+      - media_volume:/usr/src/app/mediafiles
+    expose:
+      - 8000
+    env_file: .env
     depends_on:
       - db
+      - rabbitmq
+    networks:
+      - main
   db:
     image: postgres:11.2-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_USER=hello_django
-      - POSTGRES_PASSWORD=hello_django
-      - POSTGRES_DB=hello_django_dev
+    env_file: .env.db
+    networks:
+      - main
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+      - media_volume:/usr/src/app/mediafiles
+    ports:
+      - 80:80
+    depends_on:
+      - web
+    networks:
+      - main
+  celery:
+    build: 
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: celery -A hello_django worker -l info
+    #volumes:
+    #  - ./app
+    depends_on:
+      - db
+      - rabbitmq
+      - web
+    networks:
+      - main
+    env_file: .env
+  celery-beat:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: celery -A hello_django beat -l info --scheduler djcelery.schedulers:DatabaseScheduler
+    #volumes:
+    #  - ./app
+    depends_on:
+      - db
+      - rabbitmq
+      - web
+    networks:
+      - main
+    env_file: .env
+  redis:
+    image: "redis:alpine"
+    expose:
+      - 6379
+  rabbitmq:
+    container_name: rabbitmq
+    hostname: rabbitmq
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672"
+    restart: on-failure
+    networks:
+      - main
+
+networks:
+  main:
 
 volumes:
   postgres_data:
+  static_volume:
+  media_volume:

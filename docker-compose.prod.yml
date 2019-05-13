@@ -14,20 +14,71 @@ services:
     env_file: .env
     depends_on:
       - db
+      - rabbitmq
+    networks:
+      - main
   db:
     image: postgres:11.2-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file: .env.db
+    networks:
+      - main
   nginx:
     build: ./nginx
     volumes:
       - static_volume:/usr/src/app/staticfiles
       - media_volume:/usr/src/app/mediafiles
     ports:
-      - 1337:80
+      - 80:80
     depends_on:
       - web
+    networks:
+      - main
+  celery:
+    build: 
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: celery -A hello_django worker -l info
+    #volumes:
+    #  - ./app
+    depends_on:
+      - db
+      - rabbitmq
+      - web
+    networks:
+      - main
+    env_file: .env
+  celery-beat:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: celery -A hello_django beat -l info --scheduler djcelery.schedulers:DatabaseScheduler
+    #volumes:
+    #  - ./app
+    depends_on:
+      - db
+      - rabbitmq
+      - web
+    networks:
+      - main
+    env_file: .env
+  redis:
+    image: "redis:alpine"
+    expose:
+      - 6379
+  rabbitmq:
+    container_name: rabbitmq
+    hostname: rabbitmq
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672"
+    restart: on-failure
+    networks:
+      - main
+
+networks:
+  main:
 
 volumes:
   postgres_data:

@@ -1,0 +1,10 @@
+certifi==2019.3.9
+Django==2.2.1
+pipenv==2018.11.26
+pytz==2019.1
+sqlparse==0.3.0
+virtualenv==16.5.0
+virtualenv-clone==0.5.3
+django-celery
+redis
+
