@@ -1,9 +1,11 @@
 from __future__ import absolute_import, unicode_literals
 
+import datetime
 import math
 
 from celery import schedules
 from celery.utils.time import maybe_make_aware
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django_celery_beat.models import IntervalSchedule, CrontabSchedule, SolarSchedule
 from django_celery_beat.schedulers import ModelEntry, DatabaseScheduler
@@ -55,9 +57,9 @@ class CustomModelEntry(ModelEntry):
         # ONE OFF TASK: Disable one off tasks after they've ran once
         def disable_task():
             self.model.enabled = False
-            self.model.total_run_count = 0  # Reset
+            # self.model.total_run_count = 0  # Reset
             self.model.no_changes = False  # Mark the model entry as changed
-            self.model.save()
+            self.model.save(update_fields=["enabled", ])
             print('Disable the periodic task', self.model)
             return schedules.schedstate(False, None)  # Don't recheck
 
@@ -77,6 +79,18 @@ class CustomModelEntry(ModelEntry):
             if now >= self.model.end_time:
                 # disable task if end date is passed
                 return disable_task()
+
+        print('self.model.scheduler_type: ', self.model.scheduler_type)
+        if self.model.scheduler_type == 'monthly_last_day':
+            last_run_at = self.model.last_run_at
+
+            # Get this month's last date
+            today = datetime.datetime.now()
+            month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
+            if month_last_date.date() != today.date():
+                return schedules.schedstate(False, 5.0)
+            elif month_last_date.date() == last_run_at.date():
+                return schedules.schedstate(False, 5.0)
 
         print('Calling scheduler function: ', self.schedule, self.last_run_at, '####')
         return self.schedule.is_due(make_aware(self.last_run_at))

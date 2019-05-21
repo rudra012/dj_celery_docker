@@ -65,6 +65,7 @@ class CustomPeriodicTask(PeriodicTask):
         ('daily', _('Daily')),
         ('weekly', _('Weekly')),
         ('monthly', _('Monthly')),
+        ('monthly_last_day', _('Monthly last day')),
     )
     clocked = models.ForeignKey(
         ClockedSchedule, on_delete=models.CASCADE, null=True, blank=True,
@@ -76,8 +77,8 @@ class CustomPeriodicTask(PeriodicTask):
         _('end_time'), blank=True, null=True,
     )
     every = models.IntegerField(_('every'), null=False, default=1)
-    period = models.CharField(
-        _('period'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
+    scheduler_type = models.CharField(
+        _('scheduler_type'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
     )
     max_run_count = models.PositiveIntegerField(null=True, blank=True)
     schedule_types = ['interval', 'crontab', 'solar', 'clocked']

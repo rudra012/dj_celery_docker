@@ -13,8 +13,8 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
         }),
         ('Schedule', {
             'fields': ('interval', 'crontab', 'solar', 'clocked', 'start_time',
-                       'end_time', 'one_off', 'every', 'period', 'max_run_count',
-                       'total_run_count'),
+                       'end_time', 'one_off', 'every', 'scheduler_type',
+                       'max_run_count', 'total_run_count'),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Arguments', {
