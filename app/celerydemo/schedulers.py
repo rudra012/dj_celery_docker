@@ -30,7 +30,7 @@ class CustomModelEntry(ModelEntry):
     )
 
     def is_due(self):
-        return super(CustomModelEntry, self).is_due()
+        # return super(CustomModelEntry, self).is_due()
         print('******', self.schedule, self.model._meta.model_name, '******', )
         print('******', self.model.name, self.model.task, self.model.enabled, '******', )
         if not self.model.enabled:
@@ -64,17 +64,26 @@ class CustomModelEntry(ModelEntry):
         print('self.model.max_run_count, self.model.total_run_count')
         print(self.model.max_run_count, self.model.total_run_count)
         if self.model.one_off and self.model.enabled and self.model.total_run_count > 0:
-            disable_task()
+            return disable_task()
 
         if self.model.max_run_count and self.model.max_run_count <= self.model.total_run_count:
-            disable_task()
+            return disable_task()
+
+        if self.model.end_time is not None:
+            now = self._default_now()
+            if getattr(settings, 'DJANGO_CELERY_BEAT_TZ_AWARE', True):
+                now = maybe_make_aware(self._default_now())
+
+            if now >= self.model.end_time:
+                # disable task if end date is passed
+                return disable_task()
 
         print('Calling scheduler function: ', self.schedule, self.last_run_at, '####')
         return self.schedule.is_due(make_aware(self.last_run_at))
 
     def __next__(self):
         cls_obj = super(CustomModelEntry, self).__next__()
-        self.model.save()
+        self.model.save(update_fields=["last_run_at", "total_run_count"])
         return cls_obj
 
 

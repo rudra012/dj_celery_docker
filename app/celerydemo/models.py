@@ -72,6 +72,9 @@ class CustomPeriodicTask(PeriodicTask):
         help_text=_('Clocked Schedule to run the task on.  '
                     'Set only one schedule type, leave the others null.'),
     )
+    end_time = models.DateTimeField(
+        _('end_time'), blank=True, null=True,
+    )
     every = models.IntegerField(_('every'), null=False, default=1)
     period = models.CharField(
         _('period'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
@@ -137,7 +140,7 @@ class CustomPeriodicTask(PeriodicTask):
             return self.clocked.schedule
 
 
-signals.post_delete.connect(
-    PeriodicTasks.update_changed, sender=ClockedSchedule)
-signals.post_save.connect(
-    PeriodicTasks.update_changed, sender=ClockedSchedule)
+signals.pre_delete.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
+signals.pre_save.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
+signals.post_delete.connect(PeriodicTasks.update_changed, sender=ClockedSchedule)
+signals.post_save.connect(PeriodicTasks.update_changed, sender=ClockedSchedule)
