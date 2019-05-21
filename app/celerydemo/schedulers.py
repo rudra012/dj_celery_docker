@@ -13,6 +13,7 @@ from .clockedschedule import clocked
 from .models import (
     ClockedSchedule,
     CustomPeriodicTask)
+from .schedules import my_crontab
 
 try:
     from celery.utils.time import is_naive
@@ -22,14 +23,15 @@ except ImportError:  # pragma: no cover
 
 class CustomModelEntry(ModelEntry):
     model_schedules = (
-        (schedules.crontab, CrontabSchedule, 'crontab'),
+        (my_crontab, CrontabSchedule, 'crontab'),
         (schedules.schedule, IntervalSchedule, 'interval'),
         (schedules.solar, SolarSchedule, 'solar'),
         (clocked, ClockedSchedule, 'clocked')
     )
 
     def is_due(self):
-        print('******', self.schedule, self.model, '******', )
+        return super(CustomModelEntry, self).is_due()
+        print('******', self.schedule, self.model._meta.model_name, '******', )
         print('******', self.model.name, self.model.task, self.model.enabled, '******', )
         if not self.model.enabled:
             # 5 second delay for re-enable.
@@ -51,8 +53,7 @@ class CustomModelEntry(ModelEntry):
                 return schedules.schedstate(False, delay)
 
         # ONE OFF TASK: Disable one off tasks after they've ran once
-        if self.model.one_off and self.model.enabled \
-                and self.model.total_run_count > 0:
+        def disable_task():
             self.model.enabled = False
             self.model.total_run_count = 0  # Reset
             self.model.no_changes = False  # Mark the model entry as changed
@@ -60,8 +61,21 @@ class CustomModelEntry(ModelEntry):
             print('Disable the periodic task', self.model)
             return schedules.schedstate(False, None)  # Don't recheck
 
+        print('self.model.max_run_count, self.model.total_run_count')
+        print(self.model.max_run_count, self.model.total_run_count)
+        if self.model.one_off and self.model.enabled and self.model.total_run_count > 0:
+            disable_task()
+
+        if self.model.max_run_count and self.model.max_run_count <= self.model.total_run_count:
+            disable_task()
+
         print('Calling scheduler function: ', self.schedule, self.last_run_at, '####')
         return self.schedule.is_due(make_aware(self.last_run_at))
+
+    def __next__(self):
+        cls_obj = super(CustomModelEntry, self).__next__()
+        self.model.save()
+        return cls_obj
 
 
 class CustomDatabaseScheduler(DatabaseScheduler):

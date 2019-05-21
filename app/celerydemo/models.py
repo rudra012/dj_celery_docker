@@ -6,6 +6,7 @@ from django.db.models import signals
 from django.utils.translation import ugettext_lazy as _
 from django_celery_beat.models import PeriodicTask, PeriodicTasks
 
+from . import schedules
 from .clockedschedule import clocked
 
 
@@ -59,13 +60,23 @@ class ClockedSchedule(models.Model):
 
 
 class CustomPeriodicTask(PeriodicTask):
-    # periodic_task = models.OneToOneField(PeriodicTask, on_delete=models.CASCADE)
+    PERIOD_CHOICES = (
+        ('once', _('Once')),
+        ('daily', _('Daily')),
+        ('weekly', _('Weekly')),
+        ('monthly', _('Monthly')),
+    )
     clocked = models.ForeignKey(
         ClockedSchedule, on_delete=models.CASCADE, null=True, blank=True,
         verbose_name=_('Clocked Schedule'),
         help_text=_('Clocked Schedule to run the task on.  '
                     'Set only one schedule type, leave the others null.'),
     )
+    every = models.IntegerField(_('every'), null=False, default=1)
+    period = models.CharField(
+        _('period'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
+    )
+    max_run_count = models.PositiveIntegerField(null=True, blank=True)
     schedule_types = ['interval', 'crontab', 'solar', 'clocked']
 
     def validate_unique(self, *args, **kwargs):
@@ -109,11 +120,17 @@ class CustomPeriodicTask(PeriodicTask):
 
     @property
     def schedule(self):
-        print('schedule', self.clocked, self.clocked.schedule)
         if self.interval:
             return self.interval.schedule
         if self.crontab:
-            return self.crontab.schedule
+            crontab = schedules.my_crontab(
+                minute=self.crontab.minute,
+                hour=self.crontab.hour,
+                day_of_week=self.crontab.day_of_week,
+                day_of_month=self.crontab.day_of_month,
+                month_of_year=self.crontab.month_of_year,
+            )
+            return crontab
         if self.solar:
             return self.solar.schedule
         if self.clocked:

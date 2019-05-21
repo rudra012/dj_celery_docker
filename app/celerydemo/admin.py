@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django_celery_beat.admin import PeriodicTaskAdmin
-from django_celery_beat.models import PeriodicTask, SolarSchedule
+from django_celery_beat.models import SolarSchedule
 
 from .models import TaskLog, ClockedSchedule, CustomPeriodicTask
 
@@ -12,8 +12,9 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
             'classes': ('extrapretty', 'wide'),
         }),
         ('Schedule', {
-            'fields': ('interval', 'crontab', 'solar', 'clocked',
-                       'start_time', 'one_off'),
+            'fields': ('interval', 'crontab', 'solar', 'clocked', 'start_time',
+                       'one_off', 'every', 'period', 'max_run_count',
+                       'total_run_count'),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Arguments', {
@@ -26,6 +27,7 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
             'classes': ('extrapretty', 'wide', 'collapse', 'in'),
         }),
     )
+    readonly_fields = ('total_run_count',)
 
     def get_queryset(self, request):
         qs = super(PeriodicTaskAdmin, self).get_queryset(request)
@@ -35,5 +37,9 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
 admin.site.register(TaskLog)
 admin.site.register(ClockedSchedule)
 admin.site.register(CustomPeriodicTask, CustomPeriodicTaskAdmin)
-admin.site.unregister(PeriodicTask)
+# admin.site.unregister(PeriodicTask)
 admin.site.unregister(SolarSchedule)
+# admin.site.unregister(IntervalSchedule)
+# admin.site.unregister(CrontabSchedule)
+# admin.site.register(IntervalSchedule)
+# admin.site.register(CrontabSchedule)
