@@ -14,7 +14,8 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
         ('Schedule', {
             'fields': ('interval', 'crontab', 'solar', 'clocked', 'start_time',
                        'end_time', 'one_off', 'every', 'scheduler_type',
-                       'max_run_count', 'total_run_count'),
+                       'max_run_count', 'total_run_count', 'last_run_at',
+                       'last_executed_at'),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Arguments', {
@@ -27,7 +28,7 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
             'classes': ('extrapretty', 'wide', 'collapse', 'in'),
         }),
     )
-    readonly_fields = ('total_run_count',)
+    readonly_fields = ('total_run_count', 'last_run_at')
 
     def get_queryset(self, request):
         qs = super(PeriodicTaskAdmin, self).get_queryset(request)

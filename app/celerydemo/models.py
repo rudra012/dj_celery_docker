@@ -81,6 +81,7 @@ class CustomPeriodicTask(PeriodicTask):
         _('scheduler_type'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
     )
     max_run_count = models.PositiveIntegerField(null=True, blank=True)
+    last_executed_at = models.DateTimeField(null=True, blank=True)
     schedule_types = ['interval', 'crontab', 'solar', 'clocked']
 
     def validate_unique(self, *args, **kwargs):
