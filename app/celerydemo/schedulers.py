@@ -91,8 +91,8 @@ class CustomModelEntry(ModelEntry):
             last_executed_at = self.model.last_executed_at
             # Get this month's last date
             today = datetime.datetime.now()
-            month_last_date = datetime.datetime.now()
-            # month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
+            # month_last_date = datetime.datetime.now()
+            month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
             if month_last_date.date() != today.date():
                 print('Not today so execute after {} seconds'.format(self.max_interval))
                 return schedules.schedstate(False, self.max_interval)
