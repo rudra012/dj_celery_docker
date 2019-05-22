@@ -34,6 +34,7 @@ class CustomModelEntry(ModelEntry):
 
     def is_due(self):
         # return super(CustomModelEntry, self).is_due()
+        # Here write checks to be execute before calling scheduler
         print('\n\n\nself.max_interval: ', self.kwargs)
         print('******', self.schedule, self.model._meta.model_name, '******', )
         print('******', self.model.name, self.model.task, self.model.enabled, '******', )
@@ -105,6 +106,11 @@ class CustomModelEntry(ModelEntry):
 
     def __next__(self):
         cls_obj = super(CustomModelEntry, self).__next__()
+
+        # Changes on execution of task
+        last_executed_days = self.model.last_executed_days
+        last_executed_days[''] = ''
+        self.model.last_executed_days = last_executed_days
         self.model.last_executed_at = self.app.now()
         self.model.save()
         # self.model.save(update_fields=["last_run_at", "total_run_count"])

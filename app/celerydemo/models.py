@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
+from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from django.db import models
 from django.db.models import signals
@@ -82,6 +83,7 @@ class CustomPeriodicTask(PeriodicTask):
     )
     max_run_count = models.PositiveIntegerField(null=True, blank=True)
     last_executed_at = models.DateTimeField(null=True, blank=True)
+    last_executed_days = JSONField(null=True, blank=True)
     schedule_types = ['interval', 'crontab', 'solar', 'clocked']
 
     def validate_unique(self, *args, **kwargs):
