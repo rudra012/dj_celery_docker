@@ -143,3 +143,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'hello_django.exception_handler.custom_exception_handler'
+}
