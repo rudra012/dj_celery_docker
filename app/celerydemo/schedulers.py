@@ -35,7 +35,7 @@ class CustomModelEntry(ModelEntry):
     def is_due(self):
         # return super(CustomModelEntry, self).is_due()
         # Here write checks to be execute before calling scheduler
-        print('\n\n\nself.max_interval: ', self.kwargs)
+        print('\n\n\nself.app.now: ', self.app.now())
         print('******', self.schedule, self.model._meta.model_name, '******', )
         print('******', self.model.name, self.model.task, self.model.enabled, '******', )
         if not self.model.enabled:
@@ -87,9 +87,9 @@ class CustomModelEntry(ModelEntry):
 
         print('self.model.scheduler_type: ', self.model.scheduler_type)
         print('last_run_at', self.last_run_at, self.model.last_run_at)
-        print('last_executed_at', self.model.last_executed_at)
+        last_executed_at = self.model.last_executed_at
+        print('last_executed_at', last_executed_at)
         if self.model.scheduler_type == 'monthly_last_day':
-            last_executed_at = self.model.last_executed_at
             # Get this month's last date
             today = datetime.datetime.now()
             # month_last_date = datetime.datetime.now()
@@ -100,6 +100,21 @@ class CustomModelEntry(ModelEntry):
             elif last_executed_at and month_last_date.date() == last_executed_at.date():
                 print('Executed today so execute after {} seconds'.format(self.max_interval))
                 return schedules.schedstate(False, self.max_interval)
+        elif self.model.scheduler_type == 'weekly':
+            today = self.app.now()
+            day_number = today.strftime("%w")
+            day_last_executed_at = self.model.last_executed_days.get(day_number) if self.model.last_executed_days else None
+            print('day_last_executed_at: ', day_last_executed_at)
+            if day_last_executed_at:
+                day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, "%d-%m-%YT%H:%M:%SZ")
+                print('day_last_executed_at: ', day_last_executed_at)
+                if today.isocalendar()[1] - day_last_executed_at.isocalendar()[1] != self.model.every:
+                    print("Already executed on day_last_executed_at")
+                    return schedules.schedstate(False, self.max_interval)
+            elif last_executed_at:
+                if today.isocalendar()[1] - last_executed_at.isocalendar()[1] != self.model.every:
+                    print("Already executed on last_executed_at")
+                    return schedules.schedstate(False, self.max_interval)
 
         print('Calling scheduler function: ', self.schedule, '####')
         return self.schedule.is_due(make_aware(self.last_run_at))
@@ -108,8 +123,10 @@ class CustomModelEntry(ModelEntry):
         cls_obj = super(CustomModelEntry, self).__next__()
 
         # Changes on execution of task
-        last_executed_days = self.model.last_executed_days
-        last_executed_days[''] = ''
+        last_executed_days = self.model.last_executed_days or {}
+        today = self.app.now()
+        last_executed_days[today.strftime("%w")] = today.strftime("%d-%m-%YT%H:%M:%SZ")
+        print(last_executed_days)
         self.model.last_executed_days = last_executed_days
         self.model.last_executed_at = self.app.now()
         self.model.save()
