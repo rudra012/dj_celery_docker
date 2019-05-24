@@ -14,8 +14,8 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
         ('Schedule', {
             'fields': ('interval', 'crontab', 'solar', 'clocked', 'start_time',
                        'end_time', 'one_off', 'every', 'scheduler_type',
-                       'max_run_count', 'total_run_count', 'last_run_at',
-                       'last_executed_at', 'last_executed_days'),
+                       'monthly_type', 'max_run_count', 'total_run_count',
+                       'last_run_at', 'last_executed_at', 'last_executed_days'),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Arguments', {

@@ -22,6 +22,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
+DATE_FORMAT = "%d-%m-%Y"
+DATETIME_FORMAT = "%d-%m-%YT%H:%M:%SZ"
 
 class CustomModelEntry(ModelEntry):
     model_schedules = (
@@ -89,24 +91,49 @@ class CustomModelEntry(ModelEntry):
         print('last_run_at', self.last_run_at, self.model.last_run_at)
         last_executed_at = self.model.last_executed_at
         print('last_executed_at', last_executed_at)
-        if self.model.scheduler_type == 'monthly_last_day':
-            # Get this month's last date
-            today = datetime.datetime.now()
-            # month_last_date = datetime.datetime.now()
+        today = self.app.now()
+        if self.model.scheduler_type == 'monthly':
             month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
-            if month_last_date.date() != today.date():
-                print('Not today so execute after {} seconds'.format(self.max_interval))
+            month_first_date = today.replace(day=1)
+            today_week_no = today.isocalendar()[1]
+            print('today_week_no:', today_week_no)
+
+            if self.model.monthly_type == 'monthly_last_day':
+                # Get this month's last date
+                # month_last_date = datetime.datetime.now()
+                if month_last_date.date() != today.date():
+                    print('Not today so execute after {} seconds'.format(self.max_interval))
+                    return schedules.schedstate(False, self.max_interval)
+                elif last_executed_at and month_last_date.date() == last_executed_at.date():
+                    print('Executed today so execute after {} seconds'.format(self.max_interval))
+                    return schedules.schedstate(False, self.max_interval)
+            elif self.model.scheduler_type in ['monthly_first_week', 'monthly_second_week',
+                                               'monthly_third_week', 'monthly_fourth_week']:
+                first_week_no = month_first_date.isocalendar()[1]
+                print('first_week_no:', first_week_no)
+                week_diff = 0
+                if self.model.scheduler_type == 'monthly_second_week':
+                    week_diff = 1
+                elif self.model.scheduler_type == 'monthly_third_week':
+                    week_diff = 2
+                elif self.model.scheduler_type == 'monthly_fourth_week':
+                    week_diff = 3
+                if today_week_no - first_week_no == week_diff:
+                    pass
                 return schedules.schedstate(False, self.max_interval)
-            elif last_executed_at and month_last_date.date() == last_executed_at.date():
-                print('Executed today so execute after {} seconds'.format(self.max_interval))
+            elif self.model.scheduler_type == 'monthly_last_week':
+                last_week_no = month_last_date.isocalendar()[1]
+                print('last_week_no:', last_week_no)
+                if today_week_no == last_week_no:
+                    pass
                 return schedules.schedstate(False, self.max_interval)
         elif self.model.scheduler_type == 'weekly':
-            today = self.app.now()
             day_number = today.strftime("%w")
-            day_last_executed_at = self.model.last_executed_days.get(day_number) if self.model.last_executed_days else None
+            day_last_executed_at = self.model.last_executed_days.get(
+                day_number) if self.model.last_executed_days else None
             print('day_last_executed_at: ', day_last_executed_at)
             if day_last_executed_at:
-                day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, "%d-%m-%YT%H:%M:%SZ")
+                day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, DATETIME_FORMAT)
                 print('day_last_executed_at: ', day_last_executed_at)
                 if today.isocalendar()[1] - day_last_executed_at.isocalendar()[1] != self.model.every:
                     print("Already executed on day_last_executed_at")
@@ -124,8 +151,13 @@ class CustomModelEntry(ModelEntry):
 
         # Changes on execution of task
         last_executed_days = self.model.last_executed_days or {}
-        today = self.app.now()
-        last_executed_days[today.strftime("%w")] = today.strftime("%d-%m-%YT%H:%M:%SZ")
+        if self.model.scheduler_type == 'weekly':
+            today = self.app.now()
+            last_executed_days[today.strftime("%w")] = today.strftime(DATETIME_FORMAT)
+        elif self.model.scheduler_type == 'monthly':
+            today = self.app.now()
+            last_executed_days[today.strftime(DATE_FORMAT)] = {
+                today.strftime("%w"): today.strftime(DATETIME_FORMAT)}
         print(last_executed_days)
         self.model.last_executed_days = last_executed_days
         self.model.last_executed_at = self.app.now()
