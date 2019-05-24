@@ -1,7 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
 from django.contrib.postgres.fields import JSONField
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import signals
 from django.utils.translation import ugettext_lazy as _
@@ -18,19 +17,19 @@ class TaskLog(models.Model):
 
 class CustomPeriodicTask(PeriodicTask):
     PERIOD_CHOICES = (
-        ('once', _('Once')),
-        ('daily', _('Daily')),
-        ('weekly', _('Weekly')),
-        ('monthly', _('Monthly')),
+        ('ONCE', _('Once')),
+        ('DAILY', _('Daily')),
+        ('WEEKLY', _('Weekly')),
+        ('MONTHLY', _('Monthly')),
     )
     MONTHLY_CHOICES = (
-        ('monthly_day', _('Monthly Day')),
-        ('monthly_last_day', _('Monthly last Day')),
-        ('monthly_first_week', _('Monthly First Week')),
-        ('monthly_second_week', _('Monthly Second Week')),
-        ('monthly_third_week', _('Monthly Third Week')),
-        ('monthly_fourth_week', _('Monthly Fourth Week')),
-        ('monthly_last_week', _('Monthly Last Week')),
+        ('DAY', _('Day')),
+        ('FIRSTWEEK', _('First Week')),
+        ('SECONDWEEK', _('Second Week')),
+        ('THIRDWEEK', _('Third Week')),
+        ('FOURTHWEEK', _('Fourth Week')),
+        ('LASTWEEK', _('Last Week')),
+        ('LASTDAY', _('Last Day')),
     )
     end_time = models.DateTimeField(
         _('end_time'), blank=True, null=True,
@@ -45,46 +44,6 @@ class CustomPeriodicTask(PeriodicTask):
     max_run_count = models.PositiveIntegerField(null=True, blank=True)
     last_executed_at = models.DateTimeField(null=True, blank=True)
     last_executed_days = JSONField(null=True, blank=True)
-    schedule_types = ['interval', 'crontab', 'solar', 'clocked']
-
-    def validate_unique(self, *args, **kwargs):
-        super(PeriodicTask, self).validate_unique(*args, **kwargs)
-
-        schedule_types = ['interval', 'crontab', 'solar', 'clocked']
-        selected_schedule_types = [s for s in schedule_types
-                                   if getattr(self, s)]
-
-        if len(selected_schedule_types) == 0:
-            raise ValidationError({
-                'interval': [
-                    'One of clocked, interval, crontab, or solar must be set.'
-                ]
-            })
-
-        err_msg = 'Only one of clocked, interval, crontab, ' \
-                  'or solar must be set'
-        if len(selected_schedule_types) > 1:
-            error_info = {}
-            for selected_schedule_type in selected_schedule_types:
-                error_info[selected_schedule_type] = [err_msg]
-            raise ValidationError(error_info)
-
-        # clocked must be one off task
-        if self.clocked and not self.one_off:
-            err_msg = 'clocked must be one off, one_off must set True'
-            raise ValidationError(err_msg)
-
-    def __str__(self):
-        fmt = '{0.name}: {{no schedule}}'
-        if self.interval:
-            fmt = '{0.name}: {0.interval}'
-        if self.crontab:
-            fmt = '{0.name}: {0.crontab}'
-        if self.solar:
-            fmt = '{0.name}: {0.solar}'
-        if self.clocked:
-            fmt = '{0.name}: {0.clocked}'
-        return fmt.format(self)
 
     @property
     def schedule(self):
@@ -107,4 +66,3 @@ class CustomPeriodicTask(PeriodicTask):
 
 signals.pre_delete.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
 signals.pre_save.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
-

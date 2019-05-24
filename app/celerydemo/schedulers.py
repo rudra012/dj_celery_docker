@@ -60,79 +60,83 @@ class CustomModelEntry(ModelEntry):
             print('Disable the periodic task', self.model)
             return schedules.schedstate(False, None)  # Don't recheck
 
-        print('self.model.max_run_count, self.model.total_run_count')
-        print(self.model.max_run_count, self.model.total_run_count)
-        if self.model.one_off and self.model.enabled and self.model.total_run_count > 0:
-            return disable_task()
-
-        # if task executed max_run_count times then disable task
-        if self.model.max_run_count and self.model.max_run_count <= self.model.total_run_count:
-            return disable_task()
-
-        if self.model.end_time is not None:
-            now = self._default_now()
-            if getattr(settings, 'DJANGO_CELERY_BEAT_TZ_AWARE', True):
-                now = maybe_make_aware(self._default_now())
-
-            if now >= self.model.end_time:
-                # disable task if end date is passed
+        print('self.model.__class__.__name__: ', self.model.__class__.__name__)
+        if self.model.__class__.__name__ == 'CustomPeriodicTask':
+            print('self.model.max_run_count, self.model.total_run_count')
+            print(self.model.max_run_count, self.model.total_run_count)
+            if self.model.one_off and self.model.enabled and self.model.total_run_count > 0:
                 return disable_task()
 
-        print('self.model.scheduler_type: ', self.model.scheduler_type)
-        print('last_run_at', self.last_run_at, self.model.last_run_at)
-        last_executed_at = self.model.last_executed_at
-        print('last_executed_at', last_executed_at)
-        today = self.app.now()
-        if self.model.scheduler_type == 'monthly':
-            month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
-            month_first_date = today.replace(day=1)
-            today_week_no = today.isocalendar()[1]
-            print('today_week_no:', today_week_no)
+            # if task executed max_run_count times then disable task
+            if self.model.max_run_count and self.model.max_run_count <= self.model.total_run_count:
+                return disable_task()
 
-            if self.model.monthly_type == 'monthly_last_day':
-                # Get this month's last date
-                # month_last_date = datetime.datetime.now()
-                if month_last_date.date() != today.date():
-                    print('Not today so execute after {} seconds'.format(self.max_interval))
+            if self.model.end_time is not None:
+                now = self._default_now()
+                if getattr(settings, 'DJANGO_CELERY_BEAT_TZ_AWARE', True):
+                    now = maybe_make_aware(self._default_now())
+
+                if now >= self.model.end_time:
+                    # disable task if end date is passed
+                    return disable_task()
+
+            print('self.model.scheduler_type: ', self.model.scheduler_type)
+            print('last_run_at', self.last_run_at, self.model.last_run_at)
+            last_executed_at = self.model.last_executed_at
+            print('last_executed_at', last_executed_at)
+            today = self.app.now()
+            if self.model.scheduler_type == 'MONTHLY':
+                month_last_date = datetime.datetime(today.year, today.month, 1) + relativedelta(months=1, days=-1)
+                month_first_date = today.replace(day=1)
+                today_week_no = today.isocalendar()[1]
+                print('today_week_no:', today_week_no)
+
+                if self.model.monthly_type == 'LASTDAY':
+                    # Get this month's last date
+                    # month_last_date = datetime.datetime.now()
+                    if month_last_date.date() != today.date():
+                        print('Not today so execute after {} seconds'.format(self.max_interval))
+                        return schedules.schedstate(False, self.max_interval)
+                    elif last_executed_at and month_last_date.date() == last_executed_at.date():
+                        print('Executed today so execute after {} seconds'.format(self.max_interval))
+                        return schedules.schedstate(False, self.max_interval)
+                elif self.model.monthly_type in ['FIRSTWEEK', 'SECONDWEEK', 'THIRDWEEK', 'FOURTHWEEK']:
+                    first_week_no = month_first_date.isocalendar()[1]
+                    print('first_week_no:', first_week_no)
+                    week_diff = 0
+                    if self.model.monthly_type == 'SECONDWEEK':
+                        week_diff = 1
+                    elif self.model.monthly_type == 'THIRDWEEK':
+                        week_diff = 2
+                    elif self.model.monthly_type == 'FOURTHWEEK':
+                        week_diff = 3
+
+                    if today_week_no - first_week_no == week_diff:
+                        pass
+
                     return schedules.schedstate(False, self.max_interval)
-                elif last_executed_at and month_last_date.date() == last_executed_at.date():
-                    print('Executed today so execute after {} seconds'.format(self.max_interval))
+                elif self.model.monthly_type == 'LASTWEEK':
+                    last_week_no = month_last_date.isocalendar()[1]
+                    print('last_week_no:', last_week_no)
+                    if today_week_no == last_week_no:
+                        pass
+
                     return schedules.schedstate(False, self.max_interval)
-            elif self.model.scheduler_type in ['monthly_first_week', 'monthly_second_week',
-                                               'monthly_third_week', 'monthly_fourth_week']:
-                first_week_no = month_first_date.isocalendar()[1]
-                print('first_week_no:', first_week_no)
-                week_diff = 0
-                if self.model.scheduler_type == 'monthly_second_week':
-                    week_diff = 1
-                elif self.model.scheduler_type == 'monthly_third_week':
-                    week_diff = 2
-                elif self.model.scheduler_type == 'monthly_fourth_week':
-                    week_diff = 3
-                if today_week_no - first_week_no == week_diff:
-                    pass
-                return schedules.schedstate(False, self.max_interval)
-            elif self.model.scheduler_type == 'monthly_last_week':
-                last_week_no = month_last_date.isocalendar()[1]
-                print('last_week_no:', last_week_no)
-                if today_week_no == last_week_no:
-                    pass
-                return schedules.schedstate(False, self.max_interval)
-        elif self.model.scheduler_type == 'weekly':
-            day_number = today.strftime("%w")
-            day_last_executed_at = self.model.last_executed_days.get(
-                day_number) if self.model.last_executed_days else None
-            print('day_last_executed_at: ', day_last_executed_at)
-            if day_last_executed_at:
-                day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, DATETIME_FORMAT)
+            elif self.model.scheduler_type == 'WEEKLY':
+                day_number = today.strftime("%w")
+                day_last_executed_at = self.model.last_executed_days.get(
+                    day_number) if self.model.last_executed_days else None
                 print('day_last_executed_at: ', day_last_executed_at)
-                if today.isocalendar()[1] - day_last_executed_at.isocalendar()[1] != self.model.every:
-                    print("Already executed on day_last_executed_at")
-                    return schedules.schedstate(False, self.max_interval)
-            elif last_executed_at:
-                if today.isocalendar()[1] - last_executed_at.isocalendar()[1] != self.model.every:
-                    print("Already executed on last_executed_at")
-                    return schedules.schedstate(False, self.max_interval)
+                if day_last_executed_at:
+                    day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, DATETIME_FORMAT)
+                    print('day_last_executed_at: ', day_last_executed_at)
+                    if today.isocalendar()[1] - day_last_executed_at.isocalendar()[1] != self.model.every:
+                        print("Already executed on day_last_executed_at")
+                        return schedules.schedstate(False, self.max_interval)
+                elif last_executed_at:
+                    if today.isocalendar()[1] - last_executed_at.isocalendar()[1] != self.model.every:
+                        print("Already executed on last_executed_at")
+                        return schedules.schedstate(False, self.max_interval)
 
         print('Calling scheduler function: ', self.schedule, '####')
         return self.schedule.is_due(make_aware(self.last_run_at))
@@ -142,10 +146,10 @@ class CustomModelEntry(ModelEntry):
 
         # Changes on execution of task
         last_executed_days = self.model.last_executed_days or {}
-        if self.model.scheduler_type == 'weekly':
+        if self.model.scheduler_type == 'WEEKLY':
             today = self.app.now()
             last_executed_days[today.strftime("%w")] = today.strftime(DATETIME_FORMAT)
-        elif self.model.scheduler_type == 'monthly':
+        elif self.model.scheduler_type == 'MONTHLY':
             today = self.app.now()
             last_executed_days[today.strftime(DATE_FORMAT)] = {
                 today.strftime("%w"): today.strftime(DATETIME_FORMAT)}
