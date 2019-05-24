@@ -18,8 +18,12 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-DATE_FORMAT = "%d-%m-%Y"
+MONTH_FORMAT = "%m-%Y"
 DATETIME_FORMAT = "%d-%m-%YT%H:%M:%SZ"
+
+
+def months_difference(date1, date2):
+    return date1.month - date2.month + 12 * (date1.year - date2.year)
 
 
 class CustomModelEntry(ModelEntry):
@@ -91,6 +95,11 @@ class CustomModelEntry(ModelEntry):
                 today_week_no = today.isocalendar()[1]
                 print('today_week_no:', today_week_no)
 
+                if last_executed_at and last_executed_at.date() == today.date():
+                    # If task executed today then skip for today
+                    print('Executed today')
+                    return schedules.schedstate(False, self.max_interval)
+
                 if self.model.monthly_type == 'LASTDAY':
                     # Get this month's last date
                     # month_last_date = datetime.datetime.now()
@@ -112,9 +121,21 @@ class CustomModelEntry(ModelEntry):
                         week_diff = 3
 
                     if today_week_no - first_week_no == week_diff:
-                        pass
+                        print('Week number pass')
+                        last_executed_days = self.model.last_executed_days
+                        print('last_executed_days: ', last_executed_days)
+                        if last_executed_days:
+                            last_executed_month_str = list(last_executed_days)[0]
+                            print('last_executed_month_str: ', last_executed_month_str)
+                            if len(last_executed_month_str.split('-')) == 2:
+                                last_executed_month = datetime.datetime.strptime(
+                                    last_executed_month_str, MONTH_FORMAT)
+                                print('last_executed_month: ', last_executed_month)
+                                print('months_difference(last_executed_month, today)',
+                                      months_difference(today, last_executed_month))
+                                if months_difference(today, last_executed_month) not in [0, self.model.every]:
+                                    return schedules.schedstate(False, self.max_interval)
 
-                    return schedules.schedstate(False, self.max_interval)
                 elif self.model.monthly_type == 'LASTWEEK':
                     last_week_no = month_last_date.isocalendar()[1]
                     print('last_week_no:', last_week_no)
@@ -131,11 +152,11 @@ class CustomModelEntry(ModelEntry):
                     day_last_executed_at = datetime.datetime.strptime(day_last_executed_at, DATETIME_FORMAT)
                     print('day_last_executed_at: ', day_last_executed_at)
                     if today.isocalendar()[1] - day_last_executed_at.isocalendar()[1] != self.model.every:
-                        print("Already executed on day_last_executed_at")
+                        print("Already executed on last week on the same day")
                         return schedules.schedstate(False, self.max_interval)
                 elif last_executed_at:
                     if today.isocalendar()[1] - last_executed_at.isocalendar()[1] != self.model.every:
-                        print("Already executed on last_executed_at")
+                        print("Already executed on last week on some day")
                         return schedules.schedstate(False, self.max_interval)
 
         print('Calling scheduler function: ', self.schedule, '####')
@@ -151,9 +172,17 @@ class CustomModelEntry(ModelEntry):
             last_executed_days[today.strftime("%w")] = today.strftime(DATETIME_FORMAT)
         elif self.model.scheduler_type == 'MONTHLY':
             today = self.app.now()
-            last_executed_days[today.strftime(DATE_FORMAT)] = {
-                today.strftime("%w"): today.strftime(DATETIME_FORMAT)}
-        print(last_executed_days)
+            print(last_executed_days, list(last_executed_days)[0] == today.strftime(MONTH_FORMAT))
+            if last_executed_days and list(last_executed_days)[0] == today.strftime(MONTH_FORMAT):
+                print('Same month')
+                month_dict = last_executed_days[today.strftime(MONTH_FORMAT)]
+                month_dict[today.strftime("%w")] = today.strftime(DATETIME_FORMAT)
+                last_executed_days[today.strftime(MONTH_FORMAT)] = month_dict
+            else:
+                print('Different month')
+                last_executed_days = {today.strftime(MONTH_FORMAT): {
+                    today.strftime("%w"): today.strftime(DATETIME_FORMAT)}}
+        print('last_executed_days: ', last_executed_days)
         self.model.last_executed_days = last_executed_days
         self.model.last_executed_at = self.app.now()
         self.model.save()
