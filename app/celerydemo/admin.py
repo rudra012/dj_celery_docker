@@ -2,7 +2,7 @@ from django.contrib import admin
 from django_celery_beat.admin import PeriodicTaskAdmin
 from django_celery_beat.models import SolarSchedule
 
-from .models import TaskLog, ClockedSchedule, CustomPeriodicTask
+from .models import TaskLog, CustomPeriodicTask
 
 
 class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
@@ -36,7 +36,6 @@ class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
 
 
 admin.site.register(TaskLog)
-admin.site.register(ClockedSchedule)
 admin.site.register(CustomPeriodicTask, CustomPeriodicTaskAdmin)
 # admin.site.unregister(PeriodicTask)
 admin.site.unregister(SolarSchedule)

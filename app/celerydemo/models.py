@@ -1,63 +1,19 @@
 from __future__ import absolute_import, unicode_literals
 
 from django.contrib.postgres.fields import JSONField
-from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import signals
 from django.utils.translation import ugettext_lazy as _
 from django_celery_beat.models import PeriodicTask, PeriodicTasks
 
 from . import schedules
-from .clockedschedule import clocked
 
 
 class TaskLog(models.Model):
     task_name = models.CharField(max_length=255)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     modified = models.DateTimeField(auto_now=True)
-
-
-class ClockedSchedule(models.Model):
-    """clocked schedule."""
-
-    clocked_time = models.DateTimeField(
-        verbose_name=_('Clock Time'),
-        help_text=_('Run the task at clocked time'),
-    )
-    enabled = models.BooleanField(
-        default=True,
-        # editable=False,
-        verbose_name=_('Enabled'),
-        help_text=_('Set to False to disable the schedule'),
-    )
-
-    class Meta:
-        """Table information."""
-
-        verbose_name = _('clocked')
-        verbose_name_plural = _('clocked')
-        ordering = ['clocked_time']
-
-    def __str__(self):
-        return '{} {}'.format(self.clocked_time, self.enabled)
-
-    @property
-    def schedule(self):
-        c = clocked(clocked_time=self.clocked_time,
-                    enabled=self.enabled, model=self)
-        return c
-
-    @classmethod
-    def from_schedule(cls, schedule):
-        spec = {'clocked_time': schedule.clocked_time,
-                'enabled': schedule.enabled}
-        try:
-            return cls.objects.get(**spec)
-        except cls.DoesNotExist:
-            return cls(**spec)
-        except MultipleObjectsReturned:
-            cls.objects.filter(**spec).delete()
-            return cls(**spec)
 
 
 class CustomPeriodicTask(PeriodicTask):
@@ -75,12 +31,6 @@ class CustomPeriodicTask(PeriodicTask):
         ('monthly_third_week', _('Monthly Third Week')),
         ('monthly_fourth_week', _('Monthly Fourth Week')),
         ('monthly_last_week', _('Monthly Last Week')),
-    )
-    clocked = models.ForeignKey(
-        ClockedSchedule, on_delete=models.CASCADE, null=True, blank=True,
-        verbose_name=_('Clocked Schedule'),
-        help_text=_('Clocked Schedule to run the task on.  '
-                    'Set only one schedule type, leave the others null.'),
     )
     end_time = models.DateTimeField(
         _('end_time'), blank=True, null=True,
@@ -157,5 +107,4 @@ class CustomPeriodicTask(PeriodicTask):
 
 signals.pre_delete.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
 signals.pre_save.connect(PeriodicTasks.changed, sender=CustomPeriodicTask)
-signals.post_delete.connect(PeriodicTasks.update_changed, sender=ClockedSchedule)
-signals.post_save.connect(PeriodicTasks.update_changed, sender=ClockedSchedule)
+

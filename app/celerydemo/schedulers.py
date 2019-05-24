@@ -7,15 +7,11 @@ from celery import schedules
 from celery.utils.time import maybe_make_aware
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django_celery_beat.models import IntervalSchedule, CrontabSchedule, SolarSchedule
 from django_celery_beat.schedulers import ModelEntry, DatabaseScheduler
 from django_celery_beat.utils import make_aware
 
-from .clockedschedule import clocked
 from .models import (
-    ClockedSchedule,
     CustomPeriodicTask)
-from .schedules import my_crontab
 
 try:
     from celery.utils.time import is_naive
@@ -25,13 +21,8 @@ except ImportError:  # pragma: no cover
 DATE_FORMAT = "%d-%m-%Y"
 DATETIME_FORMAT = "%d-%m-%YT%H:%M:%SZ"
 
+
 class CustomModelEntry(ModelEntry):
-    model_schedules = (
-        (my_crontab, CrontabSchedule, 'crontab'),
-        (schedules.schedule, IntervalSchedule, 'interval'),
-        (schedules.solar, SolarSchedule, 'solar'),
-        (clocked, ClockedSchedule, 'clocked')
-    )
     max_interval = 60
 
     def is_due(self):
