@@ -32,16 +32,26 @@ class CustomPeriodicTask(PeriodicTask):
         ('LASTDAY', _('Last Day')),
     )
     end_time = models.DateTimeField(
-        _('end_time'), blank=True, null=True,
+        _('End Datetime'), blank=True, null=True,
+        help_text=_(
+            'Datetime when the scheduled task should end')
     )
-    every = models.IntegerField(_('every'), null=False, default=1)
+    every = models.PositiveSmallIntegerField(
+        _('every'), null=False, default=1,
+        help_text=_('For Weekly and Monthly Repeat')
+    )
     scheduler_type = models.CharField(
-        _('scheduler_type'), max_length=24, choices=PERIOD_CHOICES, null=True, blank=True
+        _('scheduler_type'), max_length=24, choices=PERIOD_CHOICES,
+        null=True, blank=True
     )
     monthly_type = models.CharField(
-        _('monthly_type'), max_length=24, choices=MONTHLY_CHOICES, null=True, blank=True
+        _('monthly_type'), max_length=24, choices=MONTHLY_CHOICES,
+        null=True, blank=True
     )
-    max_run_count = models.PositiveIntegerField(null=True, blank=True)
+    max_run_count = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text=_('To end scheduled task after few occurrence')
+    )
     last_executed_at = models.DateTimeField(null=True, blank=True)
     last_executed_days = JSONField(null=True, blank=True)
 

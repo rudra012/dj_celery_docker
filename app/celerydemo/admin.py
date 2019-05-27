@@ -8,14 +8,18 @@ from .models import TaskLog, CustomPeriodicTask
 class CustomPeriodicTaskAdmin(PeriodicTaskAdmin):
     fieldsets = (
         (None, {
-            'fields': ('name', 'regtask', 'task', 'enabled', 'description',),
+            'fields': ('name', 'description', ('regtask', 'task'), 'enabled',),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Schedule', {
-            'fields': ('interval', 'crontab', 'solar', 'clocked', 'start_time',
-                       'end_time', 'one_off', 'every', 'scheduler_type',
-                       'monthly_type', 'max_run_count', 'total_run_count',
-                       'last_run_at', 'last_executed_at', 'last_executed_days'),
+            'fields': (
+                ('scheduler_type', 'monthly_type'), ('start_time', 'end_time'),
+                ('every', 'max_run_count'), 'one_off', 'crontab', 'interval', 'clocked'),
+            'classes': ('extrapretty', 'wide'),
+        }),
+        ('Schedule Run Details', {
+            'fields': ('total_run_count', 'last_run_at', 'last_executed_at',
+                       'last_executed_days'),
             'classes': ('extrapretty', 'wide'),
         }),
         ('Arguments', {
