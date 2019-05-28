@@ -34,8 +34,7 @@ class CustomModelEntry(ModelEntry):
         # Here write checks to be execute before calling scheduler
         print('\n\n\nself.app.now: ', self.app.now())
         print('******', self.schedule, self.model._meta.model_name, '******', )
-        print('******', self.model.name, self.model.task, self.model.enabled,
-              '******', )
+        print(self.model.name, self.model.task, self.model.enabled)
         if not self.model.enabled:
             # max interval second delay for re-enable.
             return schedules.schedstate(False, self.max_interval)
@@ -92,9 +91,9 @@ class CustomModelEntry(ModelEntry):
             today = self.app.now()
             if self.model.scheduler_type == 'MONTHLY':
                 # Get this month's last date
-                month_last_date = datetime.datetime(today.year, today.month,
-                                                    1) + relativedelta(months=1,
-                                                                       days=-1)
+                month_last_date = datetime.datetime(
+                    today.year, today.month, 1) + relativedelta(
+                    months=1, days=-1)
                 month_first_date = today.replace(day=1)
                 today_week_no = today.isocalendar()[1]
                 print('today_week_no:', today_week_no)
@@ -110,8 +109,6 @@ class CustomModelEntry(ModelEntry):
                         print('Not today so execute after {} seconds'.format(
                             self.max_interval))
                         return schedules.schedstate(False, self.max_interval)
-                    # elif last_executed_at and month_last_date.date() == last_executed_at.date():
-                    #     print('Executed today so execute after {} seconds'.format(self.max_interval))
                     #     return schedules.schedstate(False, self.max_interval)
                 elif self.model.monthly_type in ['FIRSTWEEK', 'SECONDWEEK',
                                                  'THIRDWEEK', 'FOURTHWEEK']:
@@ -179,6 +176,16 @@ class CustomModelEntry(ModelEntry):
                                     0, self.model.every]:
                                     return schedules.schedstate(
                                         False, self.max_interval)
+                elif self.model.monthly_type == 'DAY' and self.model.crontab:
+                    month_day = self.model.crontab.day_of_month.isdigit()
+                    print('month_day: ', month_day)
+                    if self.model.last_executed_at and int(month_day) == int(
+                            today.day):
+                        current_month = today.month
+                        last_executed_month = self.model.last_executed_at.month
+                        if current_month - last_executed_month != self.model.every:
+                            return schedules.schedstate(
+                                False, self.max_interval)
 
             elif self.model.scheduler_type == 'WEEKLY':
                 day_number = today.strftime("%w")
@@ -214,8 +221,7 @@ class CustomModelEntry(ModelEntry):
                 DATETIME_FORMAT)
         elif self.model.scheduler_type == 'MONTHLY':
             today = self.app.now()
-            print(last_executed_days,
-                  list(last_executed_days)[0] == today.strftime(MONTH_FORMAT))
+            print('last_executed_days: ', last_executed_days)
             if last_executed_days and list(last_executed_days)[
                 0] == today.strftime(MONTH_FORMAT):
                 print('Same month')
