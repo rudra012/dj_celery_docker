@@ -6,7 +6,7 @@ certifi==2019.3.9
 Django==2.2.1
 djangorestframework==3.9.4
 kombu==4.5.0
-pipenv==2018.11.26
+pipenv==2022.1.8
 pkg-resources==0.0.0
 psycopg2==2.8.2
 pytz==2019.1
